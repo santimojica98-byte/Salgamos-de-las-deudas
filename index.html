@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#05080f">
+<meta name="description" content="Dashboard de libertad financiera familiar">
+<title>Libertad Financiera 💚</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="bg-grid"></div>
+<div class="bg-noise"></div>
+
+<!-- NAV TABS -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>Dashboard</span>
+  </button>
+  <button class="nav-btn" data-tab="calendar" onclick="switchTab('calendar')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+    <span>Calendario</span>
+  </button>
+  <button class="nav-btn" data-tab="simulator" onclick="switchTab('simulator')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span>Simulador</span>
+  </button>
+  <button class="nav-btn" data-tab="ai" onclick="switchTab('ai')">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a5 5 0 1 0 5 5 5 5 0 0 0-5-5zm0 8a3 3 0 1 1 3-3 3 3 0 0 1-3 3zm9 11v-1a7 7 0 0 0-7-7h-4a7 7 0 0 0-7 7v1"/></svg>
+    <span>IA Consejera</span>
+  </button>
+</nav>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <h1>Libertad <span>2025</span></h1>
+      <p>Control financiero · Familia</p>
+    </div>
+    <div class="header-right">
+      <button class="notif-btn" id="notif-btn" onclick="toggleNotifications()" title="Recordatorios">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge" id="notif-badge" style="display:none">!</span>
+      </button>
+      <button class="help-btn" onclick="openHelp()" title="¿Cómo funciona?">?</button>
+      <button class="header-badge" onclick="syncData()">
+        <div class="dot"></div>
+        <span id="sync-label">Actualizar</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════
+       TAB: DASHBOARD
+  ══════════════════════════════ -->
+  <div id="tab-dashboard" class="tab-content active">
+
+    <div class="config-bar">
+      <label>🔗 Apps Script URL</label>
+      <input type="text" id="apps-script-url" placeholder="https://script.google.com/macros/s/.../exec" />
+      <span class="status-dot" id="script-status">Sin configurar</span>
+    </div>
+
+    <div class="section-title">Resumen global</div>
+    <div class="hero">
+      <div class="hero-ring-card glass">
+        <div class="ring-wrap">
+          <canvas id="heroRing"></canvas>
+          <div class="ring-center">
+            <span class="pct" id="hero-pct">0%</span>
+            <span class="lbl">Pagado</span>
+          </div>
+        </div>
+        <div class="hero-ring-info">
+          <div class="sub">Deuda total actual</div>
+          <h2 id="hero-total">$90.25M</h2>
+          <p class="original">Inicio: <span id="hero-original">$90.25M</span></p>
+          <div class="progress-row">
+            <div class="row-label"><span>Progreso</span><span id="hero-pct2">0%</span></div>
+            <div class="progress-track"><div class="progress-fill" id="hero-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-mini green glass">
+        <div><div class="lbl">Cuota mensual total</div><div class="val" id="stat-cuota">$9.5M</div></div>
+        <div class="note">Suma de todas las cuotas activas</div>
+      </div>
+      <div class="stat-mini blue glass">
+        <div><div class="lbl">Meses estimados</div><div class="val" id="stat-months">~15</div></div>
+        <div class="note">Proyección sin abono extra</div>
+      </div>
+    </div>
+
+    <!-- EVOLUTION CHART -->
+    <div class="section-title" style="margin-top:6px;">Evolución de deuda en el tiempo</div>
+    <div class="chart-card glass">
+      <div class="chart-card-header">
+        <div>
+          <h3 class="chart-title">Curva de reducción</h3>
+          <p class="chart-sub">Saldo total registrado mes a mes</p>
+        </div>
+        <div class="chart-legend">
+          <span class="legend-dot" style="background:var(--green)"></span><span>Saldo real</span>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="evolutionChart"></canvas></div>
+    </div>
+
+    <div class="section-title" style="margin-top:6px;">Categorías — toca para ver detalle</div>
+    <div class="cat-grid" id="cat-grid"></div>
+
+    <div class="section-title">Detalle de deudas</div>
+    <div class="main-grid">
+      <div class="debt-panel glass">
+        <div class="debt-panel-header">
+          <h3>Todas las cuentas</h3>
+          <div class="filter-pills">
+            <button class="pill active" data-f="all" onclick="filterList('all')">Todo</button>
+            <button class="pill" data-f="0" onclick="filterList(0)">T. ANG</button>
+            <button class="pill" data-f="1" onclick="filterList(1)">C. ANG</button>
+            <button class="pill" data-f="2" onclick="filterList(2)">C. EXT</button>
+            <button class="pill" data-f="3" onclick="filterList(3)">T. EXT</button>
+          </div>
+        </div>
+        <div class="debt-list" id="debt-list"></div>
+      </div>
+
+      <div class="right-panel">
+        <div class="pay-card glass">
+          <h3>💳 Registrar Pago</h3>
+          <div class="form-group">
+            <label class="form-label">Cuenta</label>
+            <select class="form-select" id="pay-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Monto pagado (COP)</label>
+            <div class="amount-wrap">
+              <span class="cur">$</span>
+              <input class="form-input" id="pay-amount" type="number" placeholder="0" step="10000" min="0" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha del pago</label>
+            <input class="form-input" id="pay-date" type="date" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nota (opcional)</label>
+            <input class="form-input" id="pay-note" type="text" placeholder="Ej: Cuota octubre..." />
+          </div>
+          <button class="btn-pay" id="btn-pay" onclick="registerPayment()">✓ Registrar Pago</button>
+          <div class="toast" id="toast"></div>
+        </div>
+        <div class="history-card glass">
+          <h3>📋 Historial de pagos</h3>
+          <div class="history-list" id="history-list">
+            <div class="empty-msg">Aún no hay pagos registrados</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       TAB: CALENDARIO
+  ══════════════════════════════ -->
+  <div id="tab-calendar" class="tab-content">
+    <div class="section-title">Calendario de pagos</div>
+    <div class="calendar-header glass">
+      <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+      <h3 id="cal-month-label" class="cal-month"></h3>
+      <button class="cal-nav" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="calendar-grid glass" id="calendar-grid"></div>
+    <div class="section-title" style="margin-top:20px;">Próximos vencimientos</div>
+    <div class="upcoming-list" id="upcoming-list"></div>
+  </div>
+
+  <!-- ══════════════════════════════
+       TAB: SIMULADOR
+  ══════════════════════════════ -->
+  <div id="tab-simulator" class="tab-content">
+    <div class="section-title">Simulador de libertad financiera</div>
+    <div class="sim-grid">
+      <div class="sim-card glass">
+        <h3 class="sim-title">⚡ Acelerador</h3>
+        <p class="sim-desc">¿Cuánto puedes pagar extra al mes?</p>
+        <div class="form-group" style="margin-top:16px;">
+          <label class="form-label">Abono extra mensual (COP)</label>
+          <div class="amount-wrap">
+            <span class="cur">$</span>
+            <input class="form-input" id="sim-extra" type="number" value="500000" step="100000" min="0" oninput="runSimulator()" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estrategia de pago</label>
+          <select class="form-select" id="sim-strategy" onchange="runSimulator()">
+            <option value="avalanche">🏔 Avalancha — mayor tasa primero (ahorra más)</option>
+            <option value="snowball">⛄ Bola de nieve — menor deuda primero (más motivador)</option>
+          </select>
+        </div>
+        <div class="sim-results" id="sim-results"></div>
+      </div>
+      <div class="sim-chart-card glass">
+        <h3 class="sim-title">Proyección de pago</h3>
+        <div class="chart-wrap" style="height:300px;"><canvas id="simChart"></canvas></div>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:20px;">Orden recomendado de pago</div>
+    <div class="priority-list" id="priority-list"></div>
+  </div>
+
+  <!-- ══════════════════════════════
+       TAB: IA CONSEJERA
+  ══════════════════════════════ -->
+  <div id="tab-ai" class="tab-content">
+    <div class="section-title">IA Consejera Financiera</div>
+    <div class="ai-chat-wrap glass">
+      <div class="ai-chat-messages" id="ai-messages">
+        <div class="ai-msg ai-msg-bot">
+          <div class="ai-avatar">🤖</div>
+          <div class="ai-bubble">
+            ¡Hola! Soy tu consejera financiera IA. Analizo tus deudas en tiempo real. Puedes preguntarme cualquier cosa sobre tu situación financiera. ¿Por dónde empezamos?
+          </div>
+        </div>
+      </div>
+      <div class="ai-suggestions" id="ai-suggestions">
+        <button class="ai-chip" onclick="aiAsk('¿Cuál deuda debo pagar primero?')">🎯 ¿Cuál pagar primero?</button>
+        <button class="ai-chip" onclick="aiAsk('Dame un análisis completo de mis deudas')">📊 Análisis completo</button>
+        <button class="ai-chip" onclick="aiAsk('¿Cuándo termino de pagar todo?')">📅 ¿Cuándo termino?</button>
+        <button class="ai-chip" onclick="aiAsk('¿Qué deuda tiene el interés más alto?')">💸 Mayor interés</button>
+        <button class="ai-chip" onclick="aiAsk('Dame consejos para reducir deudas más rápido')">🚀 Consejos rápidos</button>
+      </div>
+      <div class="ai-input-row">
+        <input class="form-input ai-input" id="ai-input" type="text" placeholder="Escríbeme algo sobre tus finanzas..." onkeydown="if(event.key==='Enter') aiSend()" />
+        <button class="ai-send-btn" onclick="aiSend()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Vamos con toda <span>❤</span> · 2025–2026</footer>
+</div>
+
+<!-- MODAL: Debt Detail -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeMod(event)">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <div class="modal-debt-list" id="modal-list"></div>
+    <button class="btn-close" onclick="closeMod()">Cerrar</button>
+  </div>
+</div>
+
+<!-- MODAL: Help -->
+<div class="modal-overlay" id="help-overlay" onclick="closeHelp(event)">
+  <div class="modal help-modal">
+    <h3>💚 ¿Cómo funciona esta app?</h3>
+    <div class="help-step">
+      <div class="help-num">1</div>
+      <div>
+        <h4>Dashboard</h4>
+        <p>El reloj principal muestra tu progreso total. Las 4 categorías tienen sus propios relojes. Toca cualquiera para ver el detalle. Registra pagos en el formulario.</p>
+      </div>
+    </div>
+    <div class="help-step">
+      <div class="help-num">2</div>
+      <div>
+        <h4>Calendario</h4>
+        <p>Ver todos tus pagos organizados por fecha. Los días con pagos se marcan en verde. Muestra los próximos vencimientos del mes.</p>
+      </div>
+    </div>
+    <div class="help-step">
+      <div class="help-num">3</div>
+      <div>
+        <h4>Simulador IA</h4>
+        <p>Ingresa un abono extra mensual y la app calcula cuándo terminas de pagar. Elige entre estrategia Avalancha (ahorra intereses) o Bola de Nieve (más motivador).</p>
+      </div>
+    </div>
+    <div class="help-step">
+      <div class="help-num">4</div>
+      <div>
+        <h4>IA Consejera</h4>
+        <p>Pregúntale cualquier cosa sobre tus finanzas. Analiza tus deudas y te da recomendaciones personalizadas. Requiere conexión a internet.</p>
+      </div>
+    </div>
+    <div class="help-step">
+      <div class="help-num">5</div>
+      <div>
+        <h4>Conectar Google Sheets (guarda pagos en la nube)</h4>
+        <p>1. Abre tu hoja → <code>Extensions → Apps Script</code><br>
+        2. Borra todo y pega el código de <code>apps-script.js</code><br>
+        3. <code>Deploy → New Deployment → Web App</code><br>
+        4. Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong><br>
+        5. Pega la URL en el campo Apps Script URL</p>
+      </div>
+    </div>
+    <button class="btn-close" onclick="closeHelp()">¡Entendido! 💪</button>
+  </div>
+</div>
+
+<!-- MODAL: Notifications -->
+<div class="modal-overlay" id="notif-overlay" onclick="closeNotif(event)">
+  <div class="modal notif-modal">
+    <h3>🔔 Recordatorios de pago</h3>
+    <div id="notif-content"></div>
+    <div style="margin-top:16px;">
+      <button class="btn-notif-enable" id="btn-notif" onclick="requestNotifPermission()">Activar notificaciones del navegador</button>
+    </div>
+    <button class="btn-close" style="margin-top:10px;" onclick="closeNotif()">Cerrar</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

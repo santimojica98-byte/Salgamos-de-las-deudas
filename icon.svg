@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#05080f"/>
+  <circle cx="96" cy="96" r="72" stroke="#2dba7c" stroke-width="8" fill="none"/>
+  <text x="96" y="112" font-size="64" text-anchor="middle" font-family="serif" fill="#2dba7c">💚</text>
+</svg>
