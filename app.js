@@ -316,13 +316,18 @@ function populateSelect(){
 // ── REGISTER PAYMENT ────────────────────────────────────────
 async function registerPayment(){
   const sv=document.getElementById('pay-select').value;
-  const amount=parseFloat(document.getElementById('pay-amount').value);
+  const rawValue = document.getElementById('pay-amount').value.replace(/\./g, '');
+  const amount=parseFloat(rawValue);
   const date=document.getElementById('pay-date').value;
   const note=document.getElementById('pay-note').value.trim();
   const btn=document.getElementById('btn-pay');
+  
   if(!sv||!amount||amount<=0||!date){ showToast('⚠️ Completa cuenta, monto y fecha.','var(--amber)'); return; }
+  
   const [ci,debtName]=sv.split('||');
-  const payment={catIdx:parseInt(ci),debtName,amount,date,note,ts:Date.now()};
+  const paymentId = 'PAY_' + Date.now();
+  
+  const payment={id: paymentId, catIdx:parseInt(ci),debtName,amount,date,note,ts:Date.now()};
   payments.push(payment);
   savePayments();
   recordMonthlySnapshot();
@@ -331,7 +336,8 @@ async function registerPayment(){
   if(url&&url.startsWith('https://script.google.com')){
     btn.disabled=true; btn.textContent='Guardando...';
     try{
-      await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({debtName,catName:CATEGORIES[parseInt(ci)].name,amount,date,note})});
+      await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id: paymentId, action: 'add', debtName,catName:CATEGORIES[parseInt(ci)].name,amount,date,note})});
       document.getElementById('script-status').textContent='✓ Conectado';
       document.getElementById('script-status').className='status-dot ok';
       showToast('✅ Guardado en Sheets y localmente.','var(--green)');
@@ -356,12 +362,44 @@ function showToast(msg,color){
 function renderHistory(){
   const list=document.getElementById('history-list');
   if(!payments.length){ list.innerHTML='<div class="empty-msg">Aún no hay pagos registrados</div>'; return; }
+  
+  payments.forEach(p => { if(!p.id) p.id = 'PAY_' + p.ts; });
+  
   list.innerHTML=[...payments].sort((a,b)=>b.ts-a.ts).slice(0,20).map(p=>{
     const cat=CATEGORIES[p.catIdx];
-    return `<div class="history-item"><div class="hdot" style="background:${cat?.color||'var(--green)'}"></div><div class="hinfo"><div class="hname">${p.debtName} <span style="color:var(--muted);font-size:0.6rem">${cat?.name||''}</span></div><div class="hdate">${p.date}${p.note?' · '+p.note:''}</div></div><div class="hamount">+${fmt(p.amount)}</div></div>`;
+    return `
+      <div class="history-item">
+        <div class="hdot" style="background:${cat?.color||'var(--green)'}"></div>
+        <div class="hinfo">
+          <div class="hname">${p.debtName} <span style="color:var(--muted);font-size:0.6rem">${cat?.name||''}</span></div>
+          <div class="hdate">${p.date}${p.note?' · '+p.note:''}</div>
+        </div>
+        <div class="hamount">+${fmt(p.amount)}</div>
+        <button class="btn-delete" onclick="deletePayment('${p.id}')" title="Borrar pago" style="background:none;border:none;cursor:pointer;opacity:0.6;font-size:1.2rem;">🗑️</button>
+      </div>`;
   }).join('');
 }
 
+function deletePayment(id) {
+  const reason = prompt('🔒 SEGURIDAD: Ingresa el motivo para eliminar este pago:');
+  if (!reason) { showToast('Eliminación cancelada.', 'var(--muted)'); return; }
+
+  payments = payments.filter(p => p.id !== id);
+  savePayments();
+  recordMonthlySnapshot();
+  renderAll();
+
+  const url=document.getElementById('apps-script-url').value.trim();
+  if(url&&url.startsWith('https://script.google.com')){
+    showToast('Sincronizando eliminación...', 'var(--amber)');
+    fetch(url, {
+      method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'delete', id: id, reason: reason })
+    }).then(() => showToast('✅ Eliminado y registrado en la nube.', 'var(--rose)'));
+  } else {
+    showToast('🗑️ Eliminado solo localmente.', 'var(--rose)');
+  }
+}
 // ── CALENDAR ────────────────────────────────────────────────
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
@@ -884,3 +922,12 @@ function renderAll(){
 document.getElementById('pay-date').value = new Date().toISOString().split('T')[0];
 recordMonthlySnapshot();
 renderAll();
+// ── FORMATEO DE MONEDA EN TIEMPO REAL ──
+document.getElementById('pay-amount').addEventListener('input', function(e) {
+  let value = e.target.value.replace(/\D/g, '');
+  if (value !== '') {
+    e.target.value = new Intl.NumberFormat('es-CO').format(parseInt(value));
+  } else {
+    e.target.value = '';
+  }
+});
